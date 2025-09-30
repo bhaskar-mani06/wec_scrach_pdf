@@ -216,7 +216,7 @@ def compare_texts():
         if not text1 or not text2:
             return jsonify({'error': 'Both texts are required for comparison'}), 400
         
-        # Improved text normalization for line-by-line comparison
+        # Enhanced text normalization for better comparison
         def normalize_text(text):
             lines = []
             for line in text.splitlines():
@@ -255,48 +255,81 @@ def compare_texts():
         significant_website_diffs = [content for content in only_in_website if len(content.strip()) > 5]
         significant_file_diffs = [content for content in only_in_file if len(content.strip()) > 5]
         
-        # Further filter out very similar content (might be just formatting differences)
+        # Enhanced similarity detection
         def is_significantly_different(content, other_set):
             # Check if this content is very similar to something in the other set
             content_words = set(content.lower().split())
             for other_content in other_set:
                 other_words = set(other_content.lower().split())
-                # If more than 60% of words match, consider it similar
-                if len(content_words & other_words) / max(len(content_words), len(other_words)) > 0.60:
+                
+                # Calculate similarity ratio
+                if len(content_words) == 0 or len(other_words) == 0:
+                    continue
+                    
+                similarity_ratio = len(content_words & other_words) / max(len(content_words), len(other_words))
+                
+                # If more than 70% of words match, consider it similar
+                if similarity_ratio > 0.70:
                     return False
-                # Also check if one is a subset of the other (fragment vs complete sentence)
+                    
+                # Check if one is a subset of the other (fragment vs complete sentence)
                 if content_words.issubset(other_words) or other_words.issubset(content_words):
                     return False
+                    
                 # Check for partial matches (common words)
                 common_words = content_words & other_words
-                if len(common_words) >= 2 and len(common_words) / min(len(content_words), len(other_words)) > 0.3:
+                if len(common_words) >= 2 and len(common_words) / min(len(content_words), len(other_words)) > 0.4:
                     return False
+                    
                 # Check for email-like content
                 if '@' in content and '@' in other_content:
                     return False
+                    
                 # Check for email protection patterns
                 if ('email' in content.lower() and 'protected' in content.lower()) and '@' in other_content:
                     return False
                 if ('email' in other_content.lower() and 'protected' in other_content.lower()) and '@' in content:
                     return False
+                    
                 # Check for common endings (like "workflows." vs "workflows")
                 if content.rstrip('.,!?;:') == other_content.rstrip('.,!?;:'):
                     return False
+                    
                 # Check for common prefixes (like "ft advise" vs "FT Advise")
                 if content.lower().strip() == other_content.lower().strip():
                     return False
+                    
                 # Check for contact-related content
                 if ('contact' in content.lower() and 'contact' in other_content.lower()) or \
                    ('contact' in content.lower() and '@' in other_content) or \
                    ('contact' in other_content.lower() and '@' in content):
                     return False
+                    
                 # Check for number and metric patterns
-                if ('100 m+' in content.lower() and '1 m+' in other_content.lower()) or \
-                   ('100 m+' in other_content.lower() and '1 m+' in content.lower()) or \
-                   ('100 m+' in content.lower() and '100 m+' in other_content.lower()) or \
-                   ('100 m+' in content.lower() and '1 million+' in other_content.lower()) or \
-                   ('100 m+' in other_content.lower() and '1 million+' in content.lower()):
+                metric_patterns = [
+                    ('100 m+', '1 m+'),
+                    ('100 m+', '1 million+'),
+                    ('100 m+', '100 m+'),
+                    ('1 m+', '1 million+'),
+                    ('100 million+', '1 million+'),
+                    ('100 million+', '100 m+')
+                ]
+                
+                for pattern1, pattern2 in metric_patterns:
+                    if (pattern1 in content.lower() and pattern2 in other_content.lower()) or \
+                       (pattern2 in content.lower() and pattern1 in other_content.lower()):
+                        return False
+                        
+                # Check for phone number patterns
+                phone_pattern = r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
+                if re.search(phone_pattern, content) and re.search(phone_pattern, other_content):
                     return False
+                    
+                # Check for URL patterns
+                url_pattern = r'https?://[^\s]+'
+                if re.search(url_pattern, content) and re.search(url_pattern, other_content):
+                    return False
+                    
             return True
         
         # Filter out content that's too similar
@@ -313,23 +346,27 @@ def compare_texts():
                 'simple_diffs': []
             })
         
-        # Create simple differences list
+        # Create enhanced differences list with line numbers
         simple_diffs = []
         
-        # Add significant content only in website
-        for content in sorted(significant_website_diffs):
+        # Add significant content only in website with proper line numbers
+        for i, content in enumerate(sorted(significant_website_diffs)):
+            # Find the actual line number in the original text
+            line_number = find_line_number(text1, content)
             simple_diffs.append({
                 'type': 'removed',
-                'line_number': 1,
+                'line_number': line_number,
                 'website': content,
                 'file': None
             })
         
-        # Add significant content only in file
-        for content in sorted(significant_file_diffs):
+        # Add significant content only in file with proper line numbers
+        for i, content in enumerate(sorted(significant_file_diffs)):
+            # Find the actual line number in the original text
+            line_number = find_line_number(text2, content)
             simple_diffs.append({
                 'type': 'added',
-                'line_number': 1,
+                'line_number': line_number,
                 'website': None,
                 'file': content
             })
@@ -342,6 +379,18 @@ def compare_texts():
         
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
+def find_line_number(text, content):
+    """Find the line number of content in the original text"""
+    lines = text.splitlines()
+    content_lower = content.lower().strip()
+    
+    for i, line in enumerate(lines):
+        line_normalized = ' '.join(line.strip().split()).lower()
+        if line_normalized == content_lower:
+            return i + 1
+    
+    return 1  # Default to line 1 if not found
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

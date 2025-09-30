@@ -42,7 +42,8 @@ fetchBtn.addEventListener('click', async () => {
         
         if (data.success) {
             websiteContent = data.text;
-            websiteText.textContent = websiteContent;
+            // Display the content in the text area like in the image
+            websiteText.innerHTML = `<div class="content-preview">${websiteContent}</div>`;
             // Clear any previous highlights
             clearHighlights(websiteText);
             showSuccess(websiteText, data.message);
@@ -74,7 +75,8 @@ fileInput.addEventListener('change', (e) => {
         .then(data => {
             if (data.success) {
                 fileContent = data.text;
-                fileText.textContent = fileContent;
+                // Display the content in the text area like in the image
+                fileText.innerHTML = `<div class="content-preview">${fileContent}</div>`;
                 // Clear any previous highlights
                 clearHighlights(fileText);
                 fileLabel.innerHTML = `
@@ -221,60 +223,294 @@ function displayDifferences(data) {
         return;
     }
     
+    // Create simple layout like the image shows
     let html = `
         <div style="text-align: center; margin-bottom: 30px;">
-            <div style="font-size: 2.5rem; margin-bottom: 15px;">❌</div>
+            <div style="font-size: 2.5rem; margin-bottom: 15px;">📊</div>
             <div style="color: #dc3545; font-weight: bold; font-size: 1.3rem; margin-bottom: 10px;">Found ${data.total_differences} difference(s)</div>
-            <div style="color: #6c757d;">Below are the detailed differences between website content and file content:</div>
+            <div style="color: #6c757d;">Side-by-side comparison highlighting the differences:</div>
         </div>
-    `;
-    
-    data.simple_diffs.forEach((diff, index) => {
-        html += `
-            <div style="margin-bottom: 20px; padding: 15px; border-radius: 10px; background: linear-gradient(145deg, #fff3cd 0%, #ffeaa7 100%); border-left: 5px solid #ffc107; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);">
-                <div style="font-weight: bold; color: #856404; margin-bottom: 10px; font-size: 1.1rem;">
-                    📍 Difference #${index + 1} - Line ${diff.line_number}
-                </div>
-        `;
         
-        if (diff.type === 'added') {
-            html += `<div style="color: #28a745; background: rgba(40, 167, 69, 0.1); padding: 8px; border-radius: 5px; margin: 5px 0;">
-                <strong>+ Added in file:</strong> <span class="highlight-added">${diff.file || '(empty line)'}</span>
-            </div>`;
-        } else if (diff.type === 'removed') {
-            html += `<div style="color: #dc3545; background: rgba(220, 53, 69, 0.1); padding: 8px; border-radius: 5px; margin: 5px 0;">
-                <strong>- Removed from website:</strong> <span class="highlight-removed">${diff.website || '(empty line)'}</span>
-            </div>`;
-        } else {
-            html += `
-                <div style="color: #dc3545; background: rgba(220, 53, 69, 0.1); padding: 8px; border-radius: 5px; margin: 5px 0;">
-                    <strong>- Website content:</strong> <span class="highlight-removed">${diff.website || '(empty line)'}</span>
+        <div class="diff-container">
+            <div class="diff-header">
+                <div class="diff-header-left">
+                    <span class="diff-label removed">${data.simple_diffs.filter(d => d.type === 'removed').length} removals</span>
+                    <span class="diff-lines">${websiteContent.split('\n').length} lines</span>
+                    <button class="copy-btn" onclick="copyToClipboard('website')">Copy</button>
                 </div>
-                <div style="color: #28a745; background: rgba(40, 167, 69, 0.1); padding: 8px; border-radius: 5px; margin: 5px 0;">
-                    <strong>+ File content:</strong> <span class="highlight-added">${diff.file || '(empty line)'}</span>
+                <div class="diff-header-right">
+                    <span class="diff-label added">${data.simple_diffs.filter(d => d.type === 'added').length} additions</span>
+                    <span class="diff-lines">${fileContent.split('\n').length} lines</span>
+                    <button class="copy-btn" onclick="copyToClipboard('file')">Copy</button>
                 </div>
-            `;
-        }
+            </div>
+            
+            <div class="diff-content-wrapper">
+                <div class="diff-left">
+                    <div class="diff-line-numbers">
+                        ${generateLineNumbers(websiteContent)}
+                    </div>
+                    <div class="diff-text-content" id="diffWebsiteContent">
+                        ${formatDiffContent(websiteContent, data.simple_diffs, 'website')}
+                    </div>
+                </div>
+                
+                <div class="diff-right">
+                    <div class="diff-line-numbers">
+                        ${generateLineNumbers(fileContent)}
+                    </div>
+                    <div class="diff-text-content" id="diffFileContent">
+                        ${formatDiffContent(fileContent, data.simple_diffs, 'file')}
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        html += `</div>`;
-    });
-    
-    // Add highlighting to the text displays
-    highlightDifferencesInText(data.simple_diffs);
-    
-    // Add summary at the end
-    html += `
         <div style="margin-top: 30px; padding: 20px; background: linear-gradient(145deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; border-left: 5px solid #2196f3;">
             <div style="font-weight: bold; color: #1976d2; margin-bottom: 10px;">📊 Summary</div>
             <div style="color: #424242;">
                 • Total differences: <strong>${data.total_differences}</strong><br>
-                • Comparison completed successfully<br>
-                • Review the differences above to understand the changes
+                • Website lines: <strong>${websiteContent.split('\n').length}</strong><br>
+                • File lines: <strong>${fileContent.split('\n').length}</strong><br>
+                • Comparison completed successfully
             </div>
         </div>
     `;
     
     diffContent.innerHTML = html;
+}
+
+// Helper function to format extracted content for display (editable)
+function formatExtractedContent(content, type) {
+    const lines = content.split('\n');
+    return lines.map((line, index) => {
+        const lineNumber = (index + 1).toString().padStart(3, ' ');
+        const lineContent = line || '';
+        return `<div class="extracted-line" data-line="${index}">
+            <span class="extracted-line-number">${lineNumber}</span>
+            <input type="text" class="extracted-line-input" value="${escapeHtml(lineContent)}" data-type="${type}" data-line="${index}" />
+        </div>`;
+    }).join('');
+}
+
+// Helper function to generate line numbers
+function generateLineNumbers(content) {
+    const lines = content.split('\n');
+    return lines.map((_, index) => `<div class="line-number">${index + 1}</div>`).join('');
+}
+
+// Helper function to format diff content with highlighting
+function formatDiffContent(content, differences, type) {
+    const lines = content.split('\n');
+    let formattedLines = [];
+    
+    lines.forEach((line, index) => {
+        let lineClass = 'diff-line';
+        let lineContent = line || '&nbsp;'; // Handle empty lines
+        
+        // Check if this line has differences
+        const hasDiff = differences.some(diff => {
+            if (type === 'website' && diff.website) {
+                return line.toLowerCase().trim() === diff.website.toLowerCase().trim();
+            } else if (type === 'file' && diff.file) {
+                return line.toLowerCase().trim() === diff.file.toLowerCase().trim();
+            }
+            return false;
+        });
+        
+        if (hasDiff) {
+            if (type === 'website') {
+                lineClass += ' diff-removed';
+            } else {
+                lineClass += ' diff-added';
+            }
+        }
+        
+        formattedLines.push(`<div class="${lineClass}">${escapeHtml(lineContent)}</div>`);
+    });
+    
+    return formattedLines.join('');
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Copy to clipboard function
+function copyToClipboard(type) {
+    const content = type === 'website' ? websiteContent : fileContent;
+    navigator.clipboard.writeText(content).then(() => {
+        // Show success feedback
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
+}
+
+// Function to get edited content from inputs
+function getEditedContent(type) {
+    const inputs = document.querySelectorAll(`input[data-type="${type}"]`);
+    return Array.from(inputs).map(input => input.value).join('\n');
+}
+
+// Function to compare edited texts
+async function compareEditedTexts() {
+    const editedWebsiteContent = getEditedContent('website');
+    const editedFileContent = getEditedContent('file');
+    
+    if (!editedWebsiteContent || !editedFileContent) {
+        alert('Please make sure both texts have content to compare.');
+        return;
+    }
+    
+    const compareBtn = document.getElementById('compareEditedBtn');
+    compareBtn.disabled = true;
+    compareBtn.innerHTML = '<span class="loading"></span>Comparing...';
+    
+    try {
+        const response = await fetch('/compare_texts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                text1: editedWebsiteContent, 
+                text2: editedFileContent 
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayEditedComparison(data, editedWebsiteContent, editedFileContent);
+        } else {
+            alert('Error comparing texts: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error comparing texts:', error);
+        alert('Failed to compare texts. Please try again.');
+    } finally {
+        compareBtn.disabled = false;
+        compareBtn.innerHTML = '🔄 Compare Edited Texts';
+    }
+}
+
+// Function to display comparison results for edited texts
+function displayEditedComparison(data, editedWebsiteContent, editedFileContent) {
+    const comparisonResults = document.getElementById('comparisonResults');
+    comparisonResults.style.display = 'block';
+    
+    if (data.identical) {
+        comparisonResults.innerHTML = `
+            <h4 style="color: #2d3748; margin: 40px 0 20px 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
+                🔍 Comparison Results
+            </h4>
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 3rem; margin-bottom: 20px;">✅</div>
+                <div style="color: #28a745; font-weight: bold; font-size: 1.2rem; margin-bottom: 10px;">Perfect Match!</div>
+                <div style="color: #6c757d;">No differences found! The edited texts are identical.</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Create comparison display for edited texts
+    let html = `
+        <h4 style="color: #2d3748; margin: 40px 0 20px 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
+            🔍 Comparison Results
+        </h4>
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div style="font-size: 2.5rem; margin-bottom: 15px;">📊</div>
+            <div style="color: #dc3545; font-weight: bold; font-size: 1.3rem; margin-bottom: 10px;">Found ${data.total_differences} difference(s)</div>
+            <div style="color: #6c757d;">Side-by-side comparison highlighting the differences:</div>
+        </div>
+        
+        <div class="diff-container">
+            <div class="diff-header">
+                <div class="diff-header-left">
+                    <span class="diff-label removed">${data.simple_diffs.filter(d => d.type === 'removed').length} removals</span>
+                    <span class="diff-lines">${editedWebsiteContent.split('\n').length} lines</span>
+                    <button class="copy-btn" onclick="copyEditedToClipboard('website')">Copy</button>
+                </div>
+                <div class="diff-header-right">
+                    <span class="diff-label added">${data.simple_diffs.filter(d => d.type === 'added').length} additions</span>
+                    <span class="diff-lines">${editedFileContent.split('\n').length} lines</span>
+                    <button class="copy-btn" onclick="copyEditedToClipboard('file')">Copy</button>
+                </div>
+            </div>
+            
+            <div class="diff-content-wrapper">
+                <div class="diff-left">
+                    <div class="diff-line-numbers">
+                        ${generateLineNumbers(editedWebsiteContent)}
+                    </div>
+                    <div class="diff-text-content" id="diffWebsiteContent">
+                        ${formatDiffContent(editedWebsiteContent, data.simple_diffs, 'website')}
+                    </div>
+                </div>
+                
+                <div class="diff-right">
+                    <div class="diff-line-numbers">
+                        ${generateLineNumbers(editedFileContent)}
+                    </div>
+                    <div class="diff-text-content" id="diffFileContent">
+                        ${formatDiffContent(editedFileContent, data.simple_diffs, 'file')}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding: 20px; background: linear-gradient(145deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 10px; border-left: 5px solid #2196f3;">
+            <div style="font-weight: bold; color: #1976d2; margin-bottom: 10px;">📊 Summary</div>
+            <div style="color: #424242;">
+                • Total differences: <strong>${data.total_differences}</strong><br>
+                • Website lines: <strong>${editedWebsiteContent.split('\n').length}</strong><br>
+                • File lines: <strong>${editedFileContent.split('\n').length}</strong><br>
+                • Comparison completed successfully
+            </div>
+        </div>
+    `;
+    
+    comparisonResults.innerHTML = html;
+    
+    // Scroll to comparison results
+    setTimeout(() => {
+        comparisonResults.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    }, 100);
+}
+
+// Function to copy edited content to clipboard
+function copyEditedToClipboard(type) {
+    const content = getEditedContent(type);
+    navigator.clipboard.writeText(content).then(() => {
+        // Show success feedback
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = 'Copied!';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
 }
 
 // Function to highlight differences in the text display areas

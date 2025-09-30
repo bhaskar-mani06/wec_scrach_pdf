@@ -527,6 +527,16 @@ body::after {
     min-height: 200px;
 }
 
+.content-preview {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #2d3748;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 10px 0;
+}
+
 .compare-section {
     text-align: center;
     margin-top: 40px;
@@ -815,6 +825,382 @@ body::after {
     100% { left: 100%; }
 }
 
+/* Extracted Content Display Styles */
+.extracted-content-section {
+    margin-bottom: 40px;
+}
+
+.extracted-content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.extracted-content-box {
+    background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.extracted-content-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.12);
+}
+
+.extracted-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 15px 20px;
+    border-bottom: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.extracted-label {
+    font-weight: 700;
+    color: #2d3748;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.extracted-lines {
+    color: #6c757d;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.copy-btn-small {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.copy-btn-small:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.extracted-text-display {
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    background: #ffffff;
+}
+
+.extracted-line {
+    display: flex;
+    align-items: flex-start;
+    padding: 2px 0;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.extracted-line:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.extracted-line-number {
+    color: #6c757d;
+    font-size: 0.8rem;
+    min-width: 40px;
+    text-align: right;
+    margin-right: 15px;
+    user-select: none;
+    font-weight: 500;
+}
+
+.extracted-line-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    color: #2d3748;
+    outline: none;
+}
+
+.extracted-line-input:focus {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.extracted-line-input:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+/* Compare Edited Button */
+.compare-edited-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 25%, #17a2b8 50%, #6f42c1 75%, #e83e8c 100%);
+    background-size: 200% 200%;
+    animation: compareEditedGradient 4s ease infinite;
+    color: white;
+    border: none;
+    padding: 16px 40px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 700;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 8px 25px rgba(40, 167, 69, 0.4),
+        0 0 0 1px rgba(255,255,255,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+@keyframes compareEditedGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.compare-edited-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.8s;
+}
+
+.compare-edited-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.8s, height 0.8s;
+}
+
+.compare-edited-btn:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 
+        0 15px 35px rgba(40, 167, 69, 0.5),
+        0 0 0 1px rgba(255,255,255,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.4);
+}
+
+.compare-edited-btn:hover::before {
+    left: 100%;
+}
+
+.compare-edited-btn:active {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.compare-edited-btn:active::after {
+    width: 200px;
+    height: 200px;
+}
+
+.compare-edited-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+    animation: none;
+}
+
+/* Side-by-side diff styles */
+.diff-container {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin: 20px 0;
+}
+
+.diff-header {
+    display: flex;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #e2e8f0;
+    padding: 15px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.diff-header-left,
+.diff-header-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.diff-header-right {
+    justify-content: flex-end;
+}
+
+.diff-label {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.diff-label.removed {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+    border: 1px solid #f1aeb5;
+}
+
+.diff-label.added {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border: 1px solid #b8dacc;
+}
+
+.diff-lines {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.copy-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.copy-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.diff-content-wrapper {
+    display: flex;
+    min-height: 400px;
+    max-height: 600px;
+    overflow: hidden;
+}
+
+.diff-left,
+.diff-right {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.diff-line-numbers {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-right: 2px solid #e2e8f0;
+    padding: 15px 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-align: right;
+    min-width: 60px;
+    user-select: none;
+}
+
+.diff-text-content {
+    flex: 1;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-y: auto;
+    background: #ffffff;
+}
+
+.diff-line {
+    padding: 4px 0;
+    border-radius: 4px;
+    margin: 2px 0;
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.diff-line:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.diff-line.diff-removed {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-left: 4px solid #dc3545;
+    padding-left: 12px;
+    color: #721c24;
+    font-weight: 500;
+}
+
+.diff-line.diff-added {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+    padding-left: 12px;
+    color: #155724;
+    font-weight: 500;
+}
+
+.line-number {
+    padding: 4px 0;
+    margin: 2px 0;
+    color: #6c757d;
+    font-size: 0.8rem;
+    user-select: none;
+}
+
+/* Custom scrollbar for diff content */
+.diff-text-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.diff-text-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.diff-text-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 10px;
+}
+
+.diff-text-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5a67d8, #6b46c1);
+}
+
 /* Custom scrollbar */
 .text-display::-webkit-scrollbar,
 .diff-content::-webkit-scrollbar {
@@ -867,6 +1253,69 @@ body::after {
 
     .file-icon {
         font-size: 2.5rem;
+    }
+    
+    /* Mobile extracted content view */
+    .extracted-content-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .extracted-header {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .extracted-text-display {
+        font-size: 0.8rem;
+        padding: 15px;
+        max-height: 300px;
+    }
+    
+    .extracted-line-number {
+        min-width: 30px;
+        margin-right: 10px;
+    }
+    
+    .extracted-line-input {
+        font-size: 0.8rem;
+        padding: 3px 6px;
+    }
+    
+    .compare-edited-btn {
+        padding: 12px 30px;
+        font-size: 1rem;
+    }
+    
+    /* Mobile diff view */
+    .diff-content-wrapper {
+        flex-direction: column;
+        max-height: none;
+    }
+    
+    .diff-left,
+    .diff-right {
+        flex-direction: column;
+    }
+    
+    .diff-line-numbers {
+        display: none;
+    }
+    
+    .diff-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .diff-header-left,
+    .diff-header-right {
+        justify-content: center;
+    }
+    
+    .diff-text-content {
+        font-size: 0.8rem;
+        padding: 10px 15px;
     }
 }
 
