@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Comparison Tool - Flask</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Text Comparison Tool</h1>
+            <!-- <p>Compare website content with text files to find differences</p> -->
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <!-- Left side: Website URL input -->
+                <div class="input-box">
+                    <h3>🌐 Website Content</h3>
+                    <input type="url" id="urlInput" class="url-input" placeholder="Paste website URL here...">
+                    <button id="fetchBtn" class="fetch-btn">Extract Text</button>
+                    <div id="websiteText" class="text-display"></div>
+                </div>
+                
+                <!-- Right side: File upload -->
+                <div class="input-box">
+                    <h3>📄 Text File</h3>
+                    <div class="file-upload">
+                        <input type="file" id="fileInput" class="file-input" accept=".txt">
+                        <label for="fileInput" class="file-label" id="fileLabel">
+                            <div class="file-icon">📁</div>
+                            <div>Click to upload or drag & drop</div>
+                            <div style="font-size: 0.9rem; color: #6c757d; margin-top: 5px;">.txt files only</div>
+                        </label>
+                    </div>
+                    <div id="fileText" class="text-display"></div>
+                </div>
+            </div>
+            
+            <!-- Compare button -->
+            <div class="compare-section">
+                <button id="compareBtn" class="compare-btn" disabled>FIND DIFFERENCE</button>
+            </div>
+            
+            <!-- Results section -->
+            <div id="results" class="results" style="display: none;">
+                <h3>📊 Comparison Results</h3>
+                <div id="diffContent" class="diff-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
