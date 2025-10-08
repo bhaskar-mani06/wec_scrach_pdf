@@ -260,20 +260,14 @@ function displayDifferences(data) {
                 
                 <div class="diff-content-wrapper">
                     <div class="diff-left">
-                        <div class="diff-line-numbers">
-                            ${generateSynchronizedLineNumbers(websiteContent, fileContent).left}
-                        </div>
                         <div class="diff-text-content" id="diffWebsiteContent">
-                            ${formatSynchronizedContent(websiteContent, fileContent, [], null).left}
+                            ${generateContentWithInlineLineNumbers(websiteContent, fileContent, [], null).left}
                         </div>
                     </div>
                     
                     <div class="diff-right">
-                        <div class="diff-line-numbers">
-                            ${generateSynchronizedLineNumbers(websiteContent, fileContent).right}
-                        </div>
-                        <div class="diff-text-content website-text-view" id="diffFileContent">
-                            ${formatSynchronizedContent(websiteContent, fileContent, [], null).right}
+                        <div class="diff-text-content" id="diffFileContent">
+                            ${generateContentWithInlineLineNumbers(websiteContent, fileContent, [], null).right}
                         </div>
                     </div>
                 </div>
@@ -317,20 +311,14 @@ function displayDifferences(data) {
             
             <div class="diff-content-wrapper">
                 <div class="diff-left">
-                    <div class="diff-line-numbers">
-                        ${generateSynchronizedLineNumbers(websiteContent, fileContent).left}
-                    </div>
                     <div class="diff-text-content" id="diffWebsiteContent">
-                        ${formatSynchronizedContent(websiteContent, fileContent, data.simple_diffs, data).left}
+                        ${generateContentWithInlineLineNumbers(websiteContent, fileContent, data.simple_diffs, data).left}
                     </div>
                 </div>
                 
                 <div class="diff-right">
-                    <div class="diff-line-numbers">
-                        ${generateSynchronizedLineNumbers(websiteContent, fileContent).right}
-                    </div>
-                    <div class="diff-text-content website-text-view" id="diffFileContent">
-                        ${formatSynchronizedContent(websiteContent, fileContent, data.simple_diffs, data).right}
+                    <div class="diff-text-content" id="diffFileContent">
+                        ${generateContentWithInlineLineNumbers(websiteContent, fileContent, data.simple_diffs, data).right}
                     </div>
                 </div>
             </div>
@@ -338,6 +326,31 @@ function displayDifferences(data) {
     `;
     
     diffContent.innerHTML = html;
+    
+    // Ensure independent scrolling by removing any potential synchronization
+    setTimeout(() => {
+        const leftPanel = document.getElementById('diffWebsiteContent');
+        const rightPanel = document.getElementById('diffFileContent');
+        
+        if (leftPanel && rightPanel) {
+            // Remove any existing scroll event listeners
+            leftPanel.removeEventListener('scroll', () => {});
+            rightPanel.removeEventListener('scroll', () => {});
+            
+            // Ensure both panels have independent scrolling
+            leftPanel.style.overflowY = 'auto';
+            rightPanel.style.overflowY = 'auto';
+            
+            // Prevent any scroll synchronization
+            leftPanel.addEventListener('scroll', (e) => {
+                e.stopPropagation();
+            });
+            
+            rightPanel.addEventListener('scroll', (e) => {
+                e.stopPropagation();
+            });
+        }
+    }, 100);
 }
 
 // Helper function to format extracted content for display (editable)
@@ -359,27 +372,97 @@ function generateLineNumbers(content) {
     return lines.map((_, index) => `<div class="line-number">${index + 1}</div>`).join('');
 }
 
-// Helper function to generate synchronized line numbers for diff view
-function generateSynchronizedLineNumbers(content1, content2) {
+// Helper function to generate content with inline line numbers
+function generateContentWithInlineLineNumbers(content1, content2, differences, data = null) {
     const lines1 = content1.split('\n');
     const lines2 = content2.split('\n');
-    
-    // Count actual content lines (non-empty, non-&nbsp;)
-    const actualLines1 = lines1.filter(line => line.trim() !== '' && line.trim() !== '&nbsp;');
-    const actualLines2 = lines2.filter(line => line.trim() !== '' && line.trim() !== '&nbsp;');
-    
-    // Use the maximum of actual content lines from both sides
-    const maxActualLines = Math.max(actualLines1.length, actualLines2.length);
     
     let result1 = '';
     let result2 = '';
     
-    // Generate line numbers for the maximum actual content
-    for (let i = 0; i < maxActualLines; i++) {
-        const lineNum = i + 1;
-        result1 += `<div class="line-number">${lineNum}</div>`;
-        result2 += `<div class="line-number">${lineNum}</div>`;
+    // Create a map of differences for faster lookup
+    const removedDiffs = new Map();
+    const addedDiffs = new Map();
+    
+    if (differences && Array.isArray(differences)) {
+        differences.forEach(diff => {
+            if (diff.type === 'removed' && diff.website) {
+                const key = diff.website.toLowerCase().trim();
+                removedDiffs.set(key, diff.website);
+            } else if (diff.type === 'added' && diff.file) {
+                const key = diff.file.toLowerCase().trim();
+                addedDiffs.set(key, diff.file);
+            }
+        });
     }
+    
+    // Format content1 with inline line numbers
+    lines1.forEach((line, index) => {
+        const lineNum = index + 1;
+        let lineClass = 'website-line';
+        let lineContent = line || '';
+        
+        // Remove existing line numbers from website content (like "1. ", "2. ", etc.)
+        lineContent = lineContent.replace(/^\d+\.\s*/, '');
+        
+        // Check if this line has differences
+        let hasDiff = false;
+        if (lineContent.trim()) {
+            const lineKey = lineContent.toLowerCase().trim();
+            if (removedDiffs.has(lineKey)) {
+                hasDiff = true;
+                lineClass += ' diff-highlight-removed';
+            } else {
+                // Check for partial matches
+                for (const [key, value] of removedDiffs) {
+                    if (lineKey.includes(key) || key.includes(lineKey)) {
+                        hasDiff = true;
+                        lineClass += ' diff-highlight-removed';
+                        break;
+                    }
+                }
+            }
+        }
+        
+        result1 += `<div class="${lineClass}">
+            <span class="inline-line-number">${lineNum}</span>
+            <span class="inline-line-content">${escapeHtml(lineContent)}</span>
+        </div>`;
+    });
+    
+    // Format content2 with inline line numbers
+    lines2.forEach((line, index) => {
+        const lineNum = index + 1;
+        let lineClass = 'website-line';
+        let lineContent = line || '';
+        
+        // Remove existing line numbers from file content (like "1. ", "2. ", etc.)
+        lineContent = lineContent.replace(/^\d+\.\s*/, '');
+        
+        // Check if this line has differences
+        let hasDiff = false;
+        if (lineContent.trim()) {
+            const lineKey = lineContent.toLowerCase().trim();
+            if (addedDiffs.has(lineKey)) {
+                hasDiff = true;
+                lineClass += ' diff-highlight-added';
+            } else {
+                // Check for partial matches
+                for (const [key, value] of addedDiffs) {
+                    if (lineKey.includes(key) || key.includes(lineKey)) {
+                        hasDiff = true;
+                        lineClass += ' diff-highlight-added';
+                        break;
+                    }
+                }
+            }
+        }
+        
+        result2 += `<div class="${lineClass}">
+            <span class="inline-line-number">${lineNum}</span>
+            <span class="inline-line-content">${escapeHtml(lineContent)}</span>
+        </div>`;
+    });
     
     return { left: result1, right: result2 };
 }
@@ -506,28 +589,21 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Enhanced function to format synchronized content for diff view with better highlighting
-function formatSynchronizedContent(content1, content2, differences, data = null) {
+// Enhanced function to format independent content for diff view with better highlighting
+function formatIndependentContent(content1, content2, differences, data = null) {
     // Validate inputs
     if (!content1 || !content2) {
-        console.error('Invalid content provided to formatSynchronizedContent');
+        console.error('Invalid content provided to formatIndependentContent');
         return { left: '', right: '' };
     }
     
     if (!differences || !Array.isArray(differences)) {
-        console.error('Invalid differences provided to formatSynchronizedContent:', differences);
+        console.error('Invalid differences provided to formatIndependentContent:', differences);
         return { left: '', right: '' };
     }
     
     const lines1 = content1.split('\n');
     const lines2 = content2.split('\n');
-    
-    // Filter out empty lines to get actual content lines
-    const actualLines1 = lines1.filter(line => line.trim() !== '');
-    const actualLines2 = lines2.filter(line => line.trim() !== '');
-    
-    // Use the maximum of actual content lines from both sides
-    const maxActualLines = Math.max(actualLines1.length, actualLines2.length);
     
     let result1 = '';
     let result2 = '';
@@ -546,14 +622,10 @@ function formatSynchronizedContent(content1, content2, differences, data = null)
         }
     });
     
-    // Format content for the maximum actual content lines
-    for (let i = 0; i < maxActualLines; i++) {
-        const line1 = i < actualLines1.length ? actualLines1[i] : '';
-        const line2 = i < actualLines2.length ? actualLines2[i] : '';
-        
-        // Format left side (website content)
+    // Format left side (website content) - all lines independently
+    lines1.forEach((line, index) => {
         let lineClass1 = 'website-line';
-        let lineContent1 = line1 || '';
+        let lineContent1 = line || '';
         
         // Check if this line has differences with improved matching
         let hasDiff1 = false;
@@ -586,11 +658,13 @@ function formatSynchronizedContent(content1, content2, differences, data = null)
             }
         }
         
-        result1 += `<div class="${lineClass1}">${lineContent1}</div>`;
-        
-        // Format right side (file content)
+        result1 += `<div class="${lineClass1}">${escapeHtml(lineContent1)}</div>`;
+    });
+    
+    // Format right side (file content) - all lines independently
+    lines2.forEach((line, index) => {
         let lineClass2 = 'website-line';
-        let lineContent2 = line2 || '';
+        let lineContent2 = line || '';
         
         // Check if this line has differences with improved matching
         let hasDiff2 = false;
@@ -623,8 +697,8 @@ function formatSynchronizedContent(content1, content2, differences, data = null)
             }
         }
         
-        result2 += `<div class="${lineClass2}">${lineContent2}</div>`;
-    }
+        result2 += `<div class="${lineClass2}">${escapeHtml(lineContent2)}</div>`;
+    });
     
     return { left: result1, right: result2 };
 }
@@ -879,4 +953,7 @@ function clearHighlights(element) {
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+
+
 

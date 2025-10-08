@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import difflib
 import os
 import re
+import json
+from datetime import datetime
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -85,11 +87,43 @@ def extract_text():
                     element.decompose()
                     break
         
-        # Extract text with complete sentences and proper structure
-        def extract_exact_text(soup):
+        # Enhanced text extraction focusing on policy-related content
+        def extract_policy_relevant_text(soup):
             # Remove unwanted elements first
             for unwanted in soup(['script', 'style', 'meta', 'link', 'noscript', 'head', 'img']):
                 unwanted.decompose()
+            
+            # Remove navigation and UI elements that are not policy-related
+            navigation_selectors = [
+                'nav', 'header', 'footer', 'menu', 'navbar', 'breadcrumb',
+                '[class*="nav"]', '[class*="menu"]', '[class*="header"]', '[class*="footer"]',
+                '[class*="breadcrumb"]', '[class*="sidebar"]', '[class*="toolbar"]'
+            ]
+            
+            for selector in navigation_selectors:
+                for element in soup.select(selector):
+                    element.decompose()
+            
+            # Remove promotional and marketing elements
+            marketing_selectors = [
+                '[class*="banner"]', '[class*="promo"]', '[class*="ad"]', '[class*="advertisement"]',
+                '[class*="marketing"]', '[class*="popup"]', '[class*="modal"]', '[class*="overlay"]',
+                '[class*="cta"]', '[class*="call-to-action"]', '[class*="button"]', '[class*="btn"]'
+            ]
+            
+            for selector in marketing_selectors:
+                for element in soup.select(selector):
+                    element.decompose()
+            
+            # Remove social media and sharing elements
+            social_selectors = [
+                '[class*="social"]', '[class*="share"]', '[class*="follow"]', '[class*="like"]',
+                '[class*="twitter"]', '[class*="facebook"]', '[class*="linkedin"]', '[class*="instagram"]'
+            ]
+            
+            for selector in social_selectors:
+                for element in soup.select(selector):
+                    element.decompose()
             
             # Remove hidden elements
             for element in soup.find_all(attrs={"hidden": True}):
@@ -141,37 +175,35 @@ def extract_text():
             email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
             actual_emails = re.findall(email_regex, html_content)
             
-            # If no actual email found, add the known email
-            if not actual_emails:
-                actual_emails = ['business@fondostech.in']
-            
-            # Look for email patterns in the HTML and replace them
-            email_patterns = [
-                r'\[email\s+protected\]',
-                r'\[email\s+protected\]',
-                r'email\s+protected',
-                r'\[email\]',
-                r'\[at\]',
-                r'\[dot\]'
-            ]
-            
-            # Replace email protection patterns with actual emails
-            for pattern in email_patterns:
-                html_content = re.sub(pattern, actual_emails[0], html_content, flags=re.IGNORECASE)
-            
-            # Special handling for "Contact US" - replace with email
-            html_content = re.sub(r'Contact\s+US', actual_emails[0], html_content, flags=re.IGNORECASE)
-            
-            # Handle other contact-related patterns
-            contact_patterns = [
-                r'Contact\s+Us',
-                r'Contact\s+us',
-                r'CONTACT\s+US',
-                r'contact\s+us'
-            ]
-            
-            for pattern in contact_patterns:
-                html_content = re.sub(pattern, actual_emails[0], html_content, flags=re.IGNORECASE)
+            # Only process email patterns if we found actual emails
+            if actual_emails:
+                # Look for email patterns in the HTML and replace them
+                email_patterns = [
+                    r'\[email\s+protected\]',
+                    r'\[email\s+protected\]',
+                    r'email\s+protected',
+                    r'\[email\]',
+                    r'\[at\]',
+                    r'\[dot\]'
+                ]
+                
+                # Replace email protection patterns with actual emails
+                for pattern in email_patterns:
+                    html_content = re.sub(pattern, actual_emails[0], html_content, flags=re.IGNORECASE)
+                
+                # Special handling for "Contact US" - replace with email
+                html_content = re.sub(r'Contact\s+US', actual_emails[0], html_content, flags=re.IGNORECASE)
+                
+                # Handle other contact-related patterns
+                contact_patterns = [
+                    r'Contact\s+Us',
+                    r'Contact\s+us',
+                    r'CONTACT\s+US',
+                    r'contact\s+us'
+                ]
+                
+                for pattern in contact_patterns:
+                    html_content = re.sub(pattern, actual_emails[0], html_content, flags=re.IGNORECASE)
             
             # Remove image file names and unwanted content
             unwanted_patterns = [
@@ -274,34 +306,116 @@ def extract_text():
             if current_sentence.strip() and current_sentence.strip() not in sentences:
                 sentences.append(current_sentence.strip())
             
-            # Clean and filter sentences - very lenient filtering to preserve content
+            # Enhanced policy-focused content filtering
+            def is_policy_relevant(text):
+                """Check if text is relevant to insurance policy content"""
+                text_lower = text.lower()
+                
+                # Policy-related keywords that indicate relevant content
+                policy_keywords = [
+                    'policy', 'insurance', 'coverage', 'premium', 'claim', 'benefit', 'deductible',
+                    'exclusion', 'inclusion', 'terms', 'conditions', 'eligibility', 'sum assured',
+                    'policyholder', 'insured', 'beneficiary', 'nominee', 'renewal', 'expiry',
+                    'effective date', 'policy period', 'coverage limit', 'claim procedure',
+                    'risk', 'liability', 'protection', 'compensation', 'settlement', 'endorsement',
+                    'rider', 'add-on', 'optional', 'mandatory', 'waiting period', 'cooling off',
+                    'free look', 'grace period', 'lapse', 'surrender', 'maturity', 'death benefit',
+                    'accidental death', 'disability', 'hospitalization', 'medical', 'health',
+                    'life insurance', 'motor insurance', 'travel insurance', 'home insurance',
+                    'fire insurance', 'marine insurance', 'crop insurance', 'liability insurance'
+                ]
+                
+                # Check if text contains policy-related keywords
+                has_policy_keywords = any(keyword in text_lower for keyword in policy_keywords)
+                
+                # Check for policy-related patterns
+                policy_patterns = [
+                    r'₹\s*\d+',  # Currency amounts
+                    r'\d+\s*(?:lakh|crore|thousand|million)',  # Amounts with units
+                    r'policy\s+(?:no|number|id)',  # Policy numbers
+                    r'coverage\s+(?:amount|limit|sum)',  # Coverage amounts
+                    r'premium\s+(?:amount|rate|cost)',  # Premium information
+                    r'claim\s+(?:process|procedure|settlement)',  # Claim information
+                    r'valid\s+(?:from|till|until)',  # Validity periods
+                    r'age\s+(?:limit|criteria|requirement)',  # Age requirements
+                    r'medical\s+(?:test|examination|checkup)',  # Medical requirements
+                ]
+                
+                has_policy_patterns = any(re.search(pattern, text_lower) for pattern in policy_patterns)
+                
+                return has_policy_keywords or has_policy_patterns
+            
+            def is_irrelevant_content(text):
+                """Check if text is irrelevant navigation/marketing content"""
+                text_lower = text.lower()
+                
+                # Irrelevant content patterns
+                irrelevant_patterns = [
+                    # Navigation and UI
+                    'home', 'about us', 'contact us', 'login', 'register', 'sign up', 'sign in',
+                    'menu', 'navigation', 'breadcrumb', 'footer', 'header', 'sidebar',
+                    
+                    # Marketing and promotional
+                    'learn more', 'read more', 'click here', 'apply now', 'buy now', 'get quote',
+                    'download', 'subscribe', 'newsletter', 'follow us', 'share', 'like',
+                    'banner', 'advertisement', 'promo', 'offer', 'deal', 'discount',
+                    
+                    # Technical/UI elements
+                    'cookie', 'privacy policy', 'terms of service', 'sitemap', 'search',
+                    'google tag manager', 'bootstrap', 'javascript', 'css', 'html',
+                    
+                    # Social media
+                    'facebook', 'twitter', 'linkedin', 'instagram', 'youtube', 'whatsapp',
+                    
+                    # Generic website content
+                    'welcome', 'thank you', 'visit our', 'check out', 'explore', 'discover',
+                    'company profile', 'our team', 'careers', 'news', 'blog', 'press release'
+                ]
+                
+                # Check for irrelevant patterns
+                has_irrelevant = any(pattern in text_lower for pattern in irrelevant_patterns)
+                
+                # Check for very short or generic text
+                is_too_short = len(text.strip()) < 10
+                
+                # Check for repetitive navigation text
+                is_navigation = any(nav_word in text_lower for nav_word in [
+                    'home', 'about', 'contact', 'services', 'products', 'support', 'help'
+                ]) and len(text.strip()) < 50
+                
+                return has_irrelevant or is_too_short or is_navigation
+            
+            # Clean and filter sentences with policy-focused filtering
             clean_sentences = []
             for sentence in sentences:
                 sentence = sentence.strip()
-                if sentence and len(sentence) > 2:  # Keep even shorter sentences
-                    # Only filter out very obvious technical/boilerplate content
-                    if not any(unwanted in sentence.lower() for unwanted in [
-                        'google tag manager', 'end google tag manager', 'required meta tags',
-                        'bootstrap css', 'js', 'css', 'javascript', 'html', 'meta',
-                        'viewport', 'charset', 'http-equiv', 'content-type',
-                        '.webp', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.ico',
-                        '@1x', '@2x', '@3x', '@1.5x', '@2.5x', '@3.5x',
-                        'without@', 'with@', 'image@', 'img@',
-                        'hidden', 'hide', 'invisible', 'sr-only', 'screen reader',
-                        'aria-hidden', 'display: none', 'visibility: hidden',
-                        '<span', '<div', '<p', '<h', '<a', '<img', '<script', '<style'
-                    ]):
-                        # Additional check for file extensions and image references
-                        if not re.search(r'\.(webp|png|jpg|jpeg|svg|gif|ico)', sentence, re.IGNORECASE):
-                            if not re.search(r'@\d+\.?\d*x', sentence, re.IGNORECASE):
-                                # Check for specific unwanted patterns
-                                if not any(unwanted in sentence for unwanted in [
-                                    'Without@1.5x.webp', 'with@1.5x.webp', 'Without@2x.webp', 'with@2x.webp',
-                                    'Without@3x.webp', 'with@3x.webp', 'without@1.5x.webp', 'with@1.5x.webp'
-                                ]):
-                                    # Check for HTML tags in sentence
-                                    if not re.search(r'<[^>]+>', sentence):
-                                        clean_sentences.append(sentence)
+                if sentence and len(sentence) > 5:  # Minimum meaningful length
+                    # Skip irrelevant content
+                    if not is_irrelevant_content(sentence):
+                        # Check if content is policy-relevant
+                        if is_policy_relevant(sentence):
+                            # Additional technical filtering
+                            if not any(unwanted in sentence.lower() for unwanted in [
+                                'google tag manager', 'bootstrap css', 'js', 'css', 'javascript', 'html', 'meta',
+                                'viewport', 'charset', 'http-equiv', 'content-type',
+                                '.webp', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.ico',
+                                '@1x', '@2x', '@3x', '@1.5x', '@2.5x', '@3.5x',
+                                'without@', 'with@', 'image@', 'img@',
+                                'hidden', 'hide', 'invisible', 'sr-only', 'screen reader',
+                                'aria-hidden', 'display: none', 'visibility: hidden',
+                                '<span', '<div', '<p', '<h', '<a', '<img', '<script', '<style'
+                            ]):
+                                # Additional check for file extensions and image references
+                                if not re.search(r'\.(webp|png|jpg|jpeg|svg|gif|ico)', sentence, re.IGNORECASE):
+                                    if not re.search(r'@\d+\.?\d*x', sentence, re.IGNORECASE):
+                                        # Check for specific unwanted patterns
+                                        if not any(unwanted in sentence for unwanted in [
+                                            'Without@1.5x.webp', 'with@1.5x.webp', 'Without@2x.webp', 'with@2x.webp',
+                                            'Without@3x.webp', 'with@3x.webp', 'without@1.5x.webp', 'with@1.5x.webp'
+                                        ]):
+                                            # Check for HTML tags in sentence
+                                            if not re.search(r'<[^>]+>', sentence):
+                                                clean_sentences.append(sentence)
             
             # Add the email if it's not already present
             final_text = '\n'.join(clean_sentences)
@@ -315,28 +429,32 @@ def extract_text():
             raw_text = re.sub(r'<[^>]+>', '', raw_text)  # Remove any remaining HTML tags
             raw_text = re.sub(r'&[a-zA-Z0-9#]+;', '', raw_text)  # Remove HTML entities
             
-            # Split into lines and filter with very minimal restrictions
+            # Split into lines and filter with policy-focused restrictions
             raw_lines = raw_text.split('\n')
             filtered_lines = []
             seen_lines = set()
             for line in raw_lines:
                 line = line.strip()
-                if line and len(line) > 1:  # Keep even single character lines
-                    # Only filter out very obvious unwanted content
-                    if not any(unwanted in line.lower() for unwanted in [
-                        'google tag manager', 'bootstrap css', 'js', 'css', 'javascript',
-                        '.webp', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.ico',
-                        '@1x', '@2x', '@3x', '@1.5x', '@2.5x', '@3.5x',
-                        'without@', 'with@', 'image@', 'img@',
-                        '<span', '<div', '<p', '<h', '<a', '<img', '<script', '<style'
-                    ]):
-                        if not re.search(r'\.(webp|png|jpg|jpeg|svg|gif|ico)', line, re.IGNORECASE):
-                            if not re.search(r'@\d+\.?\d*x', line, re.IGNORECASE):
-                                if not re.search(r'<[^>]+>', line):
-                                    # Check for duplicates
-                                    if line not in seen_lines:
-                                        seen_lines.add(line)
-                                        filtered_lines.append(line)
+                if line and len(line) > 5:  # Minimum meaningful length
+                    # Skip irrelevant content
+                    if not is_irrelevant_content(line):
+                        # Check if content is policy-relevant
+                        if is_policy_relevant(line):
+                            # Only filter out very obvious unwanted content
+                            if not any(unwanted in line.lower() for unwanted in [
+                                'google tag manager', 'bootstrap css', 'js', 'css', 'javascript',
+                                '.webp', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.ico',
+                                '@1x', '@2x', '@3x', '@1.5x', '@2.5x', '@3.5x',
+                                'without@', 'with@', 'image@', 'img@',
+                                '<span', '<div', '<p', '<h', '<a', '<img', '<script', '<style'
+                            ]):
+                                if not re.search(r'\.(webp|png|jpg|jpeg|svg|gif|ico)', line, re.IGNORECASE):
+                                    if not re.search(r'@\d+\.?\d*x', line, re.IGNORECASE):
+                                        if not re.search(r'<[^>]+>', line):
+                                            # Check for duplicates
+                                            if line not in seen_lines:
+                                                seen_lines.add(line)
+                                                filtered_lines.append(line)
             
             # Use the more comprehensive content if it's longer
             comprehensive_text = '\n'.join(filtered_lines)
@@ -550,13 +668,17 @@ def extract_text():
             
             final_text = '\n'.join(unique_final_lines)
             
-            if 'business@fondostech.in' not in final_text:
-                final_text += '\n' + 'business@fondostech.in'
+            # Don't add any default email - only use emails from website
             
-            # Return with proper line breaks
-            return final_text
+            # Add line numbers to each line for proper extraction
+            lines_with_numbers = []
+            for i, line in enumerate(final_text.split('\n'), 1):
+                if line.strip():  # Only add non-empty lines
+                    lines_with_numbers.append(f"{i}. {line.strip()}")
+            
+            return '\n'.join(lines_with_numbers)
         
-        text = extract_exact_text(soup)
+        text = extract_policy_relevant_text(soup)
         
         return jsonify({
             'success': True,
@@ -824,6 +946,886 @@ def find_line_number(text, content):
             return i + 1
     
     return 1  # Default to line 1 if not found
+
+@app.route('/extract_policy', methods=['POST'])
+def extract_policy():
+    """
+    Intelligent data extraction assistant for insurance policy analysis.
+    Extracts only the main and useful details from webpage text that are relevant to a policy document.
+    """
+    try:
+        data = request.get_json()
+        text = data.get('text', '').strip()
+        
+        if not text:
+            return jsonify({'error': 'Please provide text content to analyze'}), 400
+        
+        # Extract policy information using intelligent parsing
+        policy_data = extract_policy_information(text)
+        
+        return jsonify({
+            'success': True,
+            'policy_data': policy_data,
+            'message': 'Policy information extracted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'An error occurred during policy extraction: {str(e)}'}), 500
+
+def extract_policy_information(text):
+    """
+    Extract policy information from text using intelligent parsing rules.
+    Returns structured JSON with policy fields.
+    """
+    
+    # Initialize policy data structure
+    policy_data = {
+        "policy_name": "Not Found",
+        "policy_number": "Not Found", 
+        "effective_date": "Not Found",
+        "expiry_date": "Not Found",
+        "coverage_limit": "Not Found",
+        "deductible": "Not Found",
+        "covered_events": "Not Found",
+        "excluded_events": "Not Found",
+        "claim_procedure": "Not Found",
+        "contact_info": "Not Found",
+        "jurisdiction": "Not Found",
+        "renewal_terms": "Not Found",
+        "premium_amount": "Not Found",
+        "beneficiary": "Not Found",
+        "risk_info": "Not Found",
+        "definitions": "Not Found",
+        # Additional detailed fields
+        "product_code": "Not Found",
+        "insurance_company_name": "Not Found",
+        "broker_name": "Not Found",
+        "imd_code": "Not Found",
+        "lob": "Not Found",
+        "cover": "Not Found",
+        "fuel_type": "Not Found",
+        "ren_roll_new_used": "Not Found",
+        "customer_name": "Not Found",
+        "mobile_number": "Not Found",
+        "customer_email": "Not Found",
+        "location": "Not Found",
+        "registration_number": "Not Found",
+        "engine_number": "Not Found",
+        "chassis_number": "Not Found",
+        "policy_issue_date": "Not Found",
+        "policy_expiry_date": "Not Found"
+    }
+    
+    # Clean and normalize text
+    text_lower = text.lower()
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # Extract Policy Name/Title
+    policy_name = extract_policy_name(text, lines)
+    if policy_name:
+        policy_data["policy_name"] = policy_name
+    
+    # Extract Policy Number/Reference ID
+    policy_number = extract_policy_number(text, lines)
+    if policy_number:
+        policy_data["policy_number"] = policy_number
+    
+    # Extract Effective Date
+    effective_date = extract_effective_date(text, lines)
+    if effective_date:
+        policy_data["effective_date"] = effective_date
+    
+    # Extract Expiry Date
+    expiry_date = extract_expiry_date(text, lines)
+    if expiry_date:
+        policy_data["expiry_date"] = expiry_date
+    
+    # Extract Coverage Limit/Sum Assured
+    coverage_limit = extract_coverage_limit(text, lines)
+    if coverage_limit:
+        policy_data["coverage_limit"] = coverage_limit
+    
+    # Extract Deductible
+    deductible = extract_deductible(text, lines)
+    if deductible:
+        policy_data["deductible"] = deductible
+    
+    # Extract Covered Events/Inclusions
+    covered_events = extract_covered_events(text, lines)
+    if covered_events:
+        policy_data["covered_events"] = covered_events
+    
+    # Extract Excluded Events/Exclusions
+    excluded_events = extract_excluded_events(text, lines)
+    if excluded_events:
+        policy_data["excluded_events"] = excluded_events
+    
+    # Extract Claim Procedure
+    claim_procedure = extract_claim_procedure(text, lines)
+    if claim_procedure:
+        policy_data["claim_procedure"] = claim_procedure
+    
+    # Extract Contact Information
+    contact_info = extract_contact_info(text, lines)
+    if contact_info:
+        policy_data["contact_info"] = contact_info
+    
+    # Extract Jurisdiction/Governing Law
+    jurisdiction = extract_jurisdiction(text, lines)
+    if jurisdiction:
+        policy_data["jurisdiction"] = jurisdiction
+    
+    # Extract Renewal/Cancellation Terms
+    renewal_terms = extract_renewal_terms(text, lines)
+    if renewal_terms:
+        policy_data["renewal_terms"] = renewal_terms
+    
+    # Extract Premium Amount
+    premium_amount = extract_premium_amount(text, lines)
+    if premium_amount:
+        policy_data["premium_amount"] = premium_amount
+    
+    # Extract Beneficiary/Nominee details
+    beneficiary = extract_beneficiary(text, lines)
+    if beneficiary:
+        policy_data["beneficiary"] = beneficiary
+    
+    # Extract Risk Information
+    risk_info = extract_risk_info(text, lines)
+    if risk_info:
+        policy_data["risk_info"] = risk_info
+    
+    # Extract Definitions/Key Terms
+    definitions = extract_definitions(text, lines)
+    if definitions:
+        policy_data["definitions"] = definitions
+    
+    # Extract additional detailed fields
+    product_code = extract_product_code(text, lines)
+    if product_code:
+        policy_data["product_code"] = product_code
+    
+    insurance_company_name = extract_insurance_company_name(text, lines)
+    if insurance_company_name:
+        policy_data["insurance_company_name"] = insurance_company_name
+    
+    broker_name = extract_broker_name(text, lines)
+    if broker_name:
+        policy_data["broker_name"] = broker_name
+    
+    imd_code = extract_imd_code(text, lines)
+    if imd_code:
+        policy_data["imd_code"] = imd_code
+    
+    lob = extract_lob(text, lines)
+    if lob:
+        policy_data["lob"] = lob
+    
+    cover = extract_cover(text, lines)
+    if cover:
+        policy_data["cover"] = cover
+    
+    fuel_type = extract_fuel_type(text, lines)
+    if fuel_type:
+        policy_data["fuel_type"] = fuel_type
+    
+    ren_roll_new_used = extract_ren_roll_new_used(text, lines)
+    if ren_roll_new_used:
+        policy_data["ren_roll_new_used"] = ren_roll_new_used
+    
+    customer_name = extract_customer_name(text, lines)
+    if customer_name:
+        policy_data["customer_name"] = customer_name
+    
+    mobile_number = extract_mobile_number(text, lines)
+    if mobile_number:
+        policy_data["mobile_number"] = mobile_number
+    
+    customer_email = extract_customer_email(text, lines)
+    if customer_email:
+        policy_data["customer_email"] = customer_email
+    
+    location = extract_location(text, lines)
+    if location:
+        policy_data["location"] = location
+    
+    registration_number = extract_registration_number(text, lines)
+    if registration_number:
+        policy_data["registration_number"] = registration_number
+    
+    engine_number = extract_engine_number(text, lines)
+    if engine_number:
+        policy_data["engine_number"] = engine_number
+    
+    chassis_number = extract_chassis_number(text, lines)
+    if chassis_number:
+        policy_data["chassis_number"] = chassis_number
+    
+    policy_issue_date = extract_policy_issue_date(text, lines)
+    if policy_issue_date:
+        policy_data["policy_issue_date"] = policy_issue_date
+    
+    policy_expiry_date = extract_policy_expiry_date(text, lines)
+    if policy_expiry_date:
+        policy_data["policy_expiry_date"] = policy_expiry_date
+    
+    return policy_data
+
+def extract_policy_name(text, lines):
+    """Extract policy name or title"""
+    # Look for common policy name patterns
+    patterns = [
+        r'(?:Product Name[:\s]*([^\n\r]+))',
+        r'(?:TWO WHEELER INSURANCE POLICY[-\s]*PACKAGE)',
+        r'(?:Two-wheeler Insurance Policy[-\s]*Package)',
+        r'(?:policy\s+name|policy\s+title|plan\s+name|insurance\s+plan)[\s:]*([^\n\r]+)',
+        r'([A-Z][a-zA-Z\s&]+(?:policy|plan|insurance|coverage|protection))',
+        r'(?:the\s+)?([A-Z][a-zA-Z\s&]+(?:health|life|auto|home|travel|business|two.?wheeler|motor)\s+(?:policy|plan|insurance))',
+        r'([A-Z][a-zA-Z\s&]+(?:comprehensive|basic|premium|standard|package)\s+(?:policy|plan|insurance))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            # Return the first meaningful match
+            for match in matches:
+                match = match.strip()
+                if len(match) > 5 and not any(word in match.lower() for word in ['terms', 'conditions', 'website', 'company']):
+                    return match
+    
+    return None
+
+def extract_policy_number(text, lines):
+    """Extract policy number or reference ID"""
+    # Look for policy number patterns
+    patterns = [
+        r'(?:POPM2W\d+)',  # Specific SBI format
+        r'(?:Policy\s*/\s*Certificate\s*No[:\s]*([A-Z0-9\-]+))',
+        r'(?:Certificate\s*No[:\s]*([A-Z0-9\-]+))',
+        r'(?:policy\s+number|policy\s+no|policy\s+ref|reference\s+id|policy\s+id)[\s:]*([A-Z0-9\-]+)',
+        r'(?:ref\.?\s*no|reference\s+number)[\s:]*([A-Z0-9\-]+)',
+        r'([A-Z]{2,4}\d{4,8})',  # Common policy number format
+        r'([A-Z0-9]{6,12})'  # Generic alphanumeric policy number
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 4:  # Reasonable policy number length
+                    return match
+    
+    return None
+
+def extract_effective_date(text, lines):
+    """Extract effective date or start date"""
+    # Look for date patterns
+    date_patterns = [
+        r'(?:effective\s+date|start\s+date|policy\s+start|commencement\s+date)[\s:]*([^\n\r]+)',
+        r'(?:from|starting|effective)\s+([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+        r'(?:Policy\s+Start\s+Date[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'(?:Period\s+of\s+Insurance[^:]*From[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'([0-9]{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{4})',
+        r'([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})'
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    
+    return None
+
+def extract_expiry_date(text, lines):
+    """Extract expiry date or end date"""
+    # Look for expiry date patterns
+    date_patterns = [
+        r'(?:expiry\s+date|end\s+date|policy\s+end|expiration\s+date)[\s:]*([^\n\r]+)',
+        r'(?:until|till|expires|expiring)\s+([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})',
+        r'(?:Policy\s+End\s+Date[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'(?:Period\s+of\s+Insurance[^:]*To[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'(?:To[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'(?:to|until)\s+([0-9]{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+[0-9]{4})',
+        r'([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})'
+    ]
+    
+    for pattern in date_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    
+    return None
+
+def extract_coverage_limit(text, lines):
+    """Extract coverage limit or sum assured"""
+    # Look for coverage amount patterns
+    patterns = [
+        r'(?:coverage\s+limit|sum\s+assured|maximum\s+coverage|policy\s+limit)[\s:]*([^\n\r]+)',
+        r'(?:up\s+to|maximum|limit\s+of)\s*([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?|[0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))',
+        r'(?:Total\s+IDV[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'(?:Vehicle\s+IDV[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'(?:IDV[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?)\s*(?:coverage|limit|sum)',
+        r'([0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))\s*(?:coverage|limit|sum)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    
+    return None
+
+def extract_deductible(text, lines):
+    """Extract deductible information"""
+    patterns = [
+        r'(?:deductible|excess|co-pay)[\s:]*([^\n\r]+)',
+        r'(?:deductible\s+of|excess\s+of)\s*([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?|[0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))',
+        r'(?:Compulsory\s+Deductible[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'(?:Voluntary\s+Deductible[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?)\s*(?:deductible|excess)',
+        r'([0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))\s*(?:deductible|excess)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    
+    return None
+
+def extract_covered_events(text, lines):
+    """Extract covered events or inclusions"""
+    # Look for coverage sections
+    coverage_keywords = ['covered', 'included', 'coverage includes', 'what is covered', 'benefits', 'we cover you for', 'protection to', 'damage due to']
+    exclusion_keywords = ['not covered', 'excluded', 'exclusions', 'not included', 'what your policy does not cover']
+    
+    coverage_sections = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        
+        # Check if line contains coverage keywords
+        if any(keyword in line_lower for keyword in coverage_keywords):
+            # Collect the next few lines that might contain coverage details
+            section = [line]
+            for j in range(i+1, min(i+15, len(lines))):
+                next_line = lines[j]
+                # Stop if we hit exclusion keywords or another section
+                if any(excl in next_line.lower() for excl in exclusion_keywords):
+                    break
+                if len(next_line) > 10:  # Only include substantial lines
+                    section.append(next_line)
+            
+            if len(section) > 1:
+                coverage_sections.append(' '.join(section))
+    
+    if coverage_sections:
+        return '; '.join(coverage_sections[:3])  # Return top 3 coverage sections
+    
+    return None
+
+def extract_excluded_events(text, lines):
+    """Extract excluded events or exclusions"""
+    exclusion_keywords = ['not covered', 'excluded', 'exclusions', 'not included', 'exceptions', 'what your policy does not cover']
+    
+    exclusion_sections = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        
+        # Check if line contains exclusion keywords
+        if any(keyword in line_lower for keyword in exclusion_keywords):
+            # Collect the next few lines that might contain exclusion details
+            section = [line]
+            for j in range(i+1, min(i+15, len(lines))):
+                next_line = lines[j]
+                if len(next_line) > 10:  # Only include substantial lines
+                    section.append(next_line)
+            
+            if len(section) > 1:
+                exclusion_sections.append(' '.join(section))
+    
+    if exclusion_sections:
+        return '; '.join(exclusion_sections[:3])  # Return top 3 exclusion sections
+    
+    return None
+
+def extract_claim_procedure(text, lines):
+    """Extract claim procedure information"""
+    claim_keywords = ['claim procedure', 'how to claim', 'claim process', 'filing a claim', 'claim steps', 'how to file your claims', 'network garage', 'non network garage']
+    
+    claim_sections = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        
+        # Check if line contains claim keywords
+        if any(keyword in line_lower for keyword in claim_keywords):
+            # Collect the next few lines that might contain claim details
+            section = [line]
+            for j in range(i+1, min(i+20, len(lines))):
+                next_line = lines[j]
+                if len(next_line) > 10:  # Only include substantial lines
+                    section.append(next_line)
+            
+            if len(section) > 1:
+                claim_sections.append(' '.join(section))
+    
+    if claim_sections:
+        return '; '.join(claim_sections[:2])  # Return top 2 claim sections
+    
+    return None
+
+def extract_contact_info(text, lines):
+    """Extract contact information"""
+    # Look for email addresses
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, text)
+    
+    # Look for phone numbers and toll-free numbers
+    phone_patterns = [
+        r'\+?[0-9]{1,4}[\s\-]?[0-9]{3,4}[\s\-]?[0-9]{3,4}[\s\-]?[0-9]{3,4}',
+        r'\(?[0-9]{3,4}\)?[\s\-]?[0-9]{3,4}[\s\-]?[0-9]{3,4}',
+        r'(?:1800[-\s]?[0-9]{2,3}[-\s]?[0-9]{4,5})',  # Toll-free numbers
+        r'(?:Toll\s+Free[:\s]*([0-9\-\s]+))',
+        r'(?:Call[:\s]*([0-9\-\s]+))'
+    ]
+    
+    phones = []
+    for pattern in phone_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        phones.extend(matches)
+    
+    contact_info = []
+    
+    if emails:
+        contact_info.extend(emails[:2])  # Max 2 emails
+    
+    if phones:
+        contact_info.extend(phones[:3])  # Max 3 phone numbers
+    
+    if contact_info:
+        return '; '.join(contact_info)
+    
+    return None
+
+def extract_jurisdiction(text, lines):
+    """Extract jurisdiction or governing law"""
+    patterns = [
+        r'(?:jurisdiction|governing\s+law|applicable\s+law)[\s:]*([^\n\r]+)',
+        r'(?:laws\s+of|subject\s+to)\s+([A-Z][a-zA-Z\s]+(?:state|country|jurisdiction))',
+        r'([A-Z][a-zA-Z\s]+(?:courts?|tribunal|arbitration))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 5:
+                    return match
+    
+    return None
+
+def extract_renewal_terms(text, lines):
+    """Extract renewal or cancellation terms"""
+    patterns = [
+        r'(?:renewal|cancellation|termination)[\s:]*([^\n\r]+)',
+        r'(?:auto\s+renewal|automatic\s+renewal)[\s:]*([^\n\r]+)',
+        r'(?:notice\s+period|cancellation\s+notice)[\s:]*([^\n\r]+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 5:
+                    return match
+    
+    return None
+
+def extract_premium_amount(text, lines):
+    """Extract premium amount or payment terms"""
+    patterns = [
+        r'(?:premium|payment|annual\s+premium)[\s:]*([^\n\r]+)',
+        r'(?:premium\s+of|payment\s+of)\s*([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?|[0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))',
+        r'(?:FINAL\s+PREMIUM[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'(?:TOTAL\s+PREMIUM[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'(?:Policy\s+premium[:\s]*([₹$€£¥]?\s*[0-9,]+(?:\.[0-9]{2})?))',
+        r'([₹$€£¥]\s*[0-9,]+(?:\.[0-9]{2})?)\s*(?:premium|payment)',
+        r'([0-9,]+(?:\.[0-9]{2})?\s*(?:lakh|crore|million|thousand|k|m))\s*(?:premium|payment)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    
+    return None
+
+def extract_beneficiary(text, lines):
+    """Extract beneficiary or nominee details"""
+    patterns = [
+        r'(?:beneficiary|nominee)[\s:]*([^\n\r]+)',
+        r'(?:beneficiary\s+details|nominee\s+details)[\s:]*([^\n\r]+)',
+        r'(?:in\s+favor\s+of|payable\s+to)[\s:]*([^\n\r]+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 5:
+                    return match
+    
+    return None
+
+def extract_risk_info(text, lines):
+    """Extract risk ratio or risk coverage information"""
+    patterns = [
+        r'(?:risk\s+ratio|risk\s+coverage|risk\s+assessment)[\s:]*([^\n\r]+)',
+        r'(?:coverage\s+ratio|sum\s+at\s+risk)[\s:]*([^\n\r]+)',
+        r'([0-9]+(?:\.[0-9]+)?\s*%)\s*(?:risk|coverage)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    
+    return None
+
+def extract_definitions(text, lines):
+    """Extract definitions or key terms"""
+    definition_keywords = ['definition', 'definitions', 'key terms', 'glossary', 'meaning']
+    
+    definition_sections = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        
+        # Check if line contains definition keywords
+        if any(keyword in line_lower for keyword in definition_keywords):
+            # Collect the next few lines that might contain definitions
+            section = [line]
+            for j in range(i+1, min(i+20, len(lines))):
+                next_line = lines[j]
+                if len(next_line) > 10:  # Only include substantial lines
+                    section.append(next_line)
+            
+            if len(section) > 1:
+                definition_sections.append(' '.join(section))
+    
+    if definition_sections:
+        return '; '.join(definition_sections[:2])  # Return top 2 definition sections
+    
+    return None
+
+# Additional detailed field extraction functions
+
+def extract_product_code(text, lines):
+    """Extract product code"""
+    patterns = [
+        r'(?:product\s+code|product\s+id)[\s:]*([A-Z0-9\-]+)',
+        r'(?:code[:\s]*([A-Z0-9\-]+))',
+        r'([A-Z]{2,4}[0-9]{2,6})'  # Common product code format
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 3:
+                    return match
+    return None
+
+def extract_insurance_company_name(text, lines):
+    """Extract insurance company name"""
+    patterns = [
+        r'(?:SBI\s+General\s+Insurance)',
+        r'(?:Bajaj\s+Allianz\s+General\s+Insurance)',
+        r'(?:HDFC\s+ERGO\s+General\s+Insurance)',
+        r'(?:ICICI\s+Lombard\s+General\s+Insurance)',
+        r'(?:New\s+India\s+Assurance)',
+        r'(?:Oriental\s+Insurance)',
+        r'(?:United\s+India\s+Insurance)',
+        r'(?:National\s+Insurance)',
+        r'([A-Z][a-zA-Z\s&]+(?:Insurance|General|Assurance))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 5:
+                    return match
+    return None
+
+def extract_broker_name(text, lines):
+    """Extract broker/intermediary name"""
+    patterns = [
+        r'(?:broker\s+name|intermediary\s+name)[\s:]*([^\n\r]+)',
+        r'(?:Cox\s+and\s+Kings)',
+        r'([A-Z][a-zA-Z\s&]+(?:Broker|Agency|Services))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    return None
+
+def extract_imd_code(text, lines):
+    """Extract IMD code"""
+    patterns = [
+        r'(?:imd\s+code|intermediary\s+code)[\s:]*([A-Z0-9\-]+)',
+        r'(?:code[:\s]*([0-9]{6,8}))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 4:
+                    return match
+    return None
+
+def extract_lob(text, lines):
+    """Extract Line of Business"""
+    patterns = [
+        r'(?:lob|line\s+of\s+business)[\s:]*([^\n\r]+)',
+        r'(?:motor|health|life|travel|home|fire)',
+        r'(?:two.?wheeler|four.?wheeler|commercial\s+vehicle)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    return None
+
+def extract_cover(text, lines):
+    """Extract cover type"""
+    patterns = [
+        r'(?:cover|coverage\s+type)[\s:]*([^\n\r]+)',
+        r'(?:comprehensive|third\s+party|package|basic)',
+        r'(?:own\s+damage|od|tp)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    return None
+
+def extract_fuel_type(text, lines):
+    """Extract fuel type"""
+    patterns = [
+        r'(?:fuel\s+type|fuel)[\s:]*([^\n\r]+)',
+        r'(?:petrol|diesel|cng|lpg|electric|hybrid)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    return None
+
+def extract_ren_roll_new_used(text, lines):
+    """Extract renewal/roll/new/used status"""
+    patterns = [
+        r'(?:renewal|roll|new|used|first\s+time)',
+        r'(?:policy\s+type)[\s:]*([^\n\r]+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 2:
+                    return match
+    return None
+
+def extract_customer_name(text, lines):
+    """Extract customer name"""
+    patterns = [
+        r'(?:customer\s+name|policy\s+holder\s+name|proposer\s+name)[\s:]*([^\n\r]+)',
+        r'(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s*([A-Z][a-zA-Z\s]+)',
+        r'(?:Name[:\s]*([A-Z][a-zA-Z\s]+))'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3 and not any(word in match.lower() for word in ['address', 'contact', 'email']):
+                    return match
+    return None
+
+def extract_mobile_number(text, lines):
+    """Extract mobile number"""
+    patterns = [
+        r'(?:mobile\s+number|contact\s+number|phone\s+number)[\s:]*([0-9\-\s\+]+)',
+        r'(\+?91[-\s]?[0-9]{10})',
+        r'([0-9]{10})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 10:
+                    return match
+    return None
+
+def extract_customer_email(text, lines):
+    """Extract customer email"""
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    emails = re.findall(email_pattern, text)
+    
+    if emails:
+        return emails[0]  # Return first email found
+    return None
+
+def extract_location(text, lines):
+    """Extract location/address"""
+    patterns = [
+        r'(?:location|address|rto\s+location)[\s:]*([^\n\r]+)',
+        r'(?:Mumbai|Delhi|Bangalore|Chennai|Kolkata|Hyderabad|Pune|Ahmedabad)',
+        r'([A-Z][a-zA-Z\s]+,\s*[A-Z][a-zA-Z\s]+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    return None
+
+def extract_registration_number(text, lines):
+    """Extract vehicle registration number"""
+    patterns = [
+        r'(?:registration\s+number|reg\s+no|vehicle\s+number)[\s:]*([A-Z0-9\s]+)',
+        r'([A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4})',  # Indian format
+        r'([A-Z0-9]{6,12})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 6:
+                    return match
+    return None
+
+def extract_engine_number(text, lines):
+    """Extract engine number"""
+    patterns = [
+        r'(?:engine\s+number|engine\s+no)[\s:]*([A-Z0-9\s]+)',
+        r'([A-Z0-9]{6,15})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 6:
+                    return match
+    return None
+
+def extract_chassis_number(text, lines):
+    """Extract chassis number"""
+    patterns = [
+        r'(?:chassis\s+number|chassis\s+no)[\s:]*([A-Z0-9\s]+)',
+        r'([A-Z0-9]{10,20})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) >= 10:
+                    return match
+    return None
+
+def extract_policy_issue_date(text, lines):
+    """Extract policy issue date"""
+    patterns = [
+        r'(?:policy\s+issue\s+date|issue\s+date)[\s:]*([0-9\/\-\.]+)',
+        r'(?:receipt\s+date)[\s:]*([0-9\/\-\.]+)',
+        r'([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    return None
+
+def extract_policy_expiry_date(text, lines):
+    """Extract policy expiry date"""
+    patterns = [
+        r'(?:policy\s+end\s+date|expiry\s+date)[\s:]*([0-9\/\-\.]+)',
+        r'(?:to[:\s]*([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4}))',
+        r'([0-9]{1,2}[\/\-\.][0-9]{1,2}[\/\-\.][0-9]{2,4})'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            for match in matches:
+                match = match.strip()
+                if len(match) > 3:
+                    return match
+    return None
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
