@@ -261,13 +261,13 @@ function displayDifferences(data) {
                 <div class="diff-content-wrapper">
                     <div class="diff-left">
                         <div class="diff-text-content" id="diffWebsiteContent">
-                            ${generateContentWithInlineLineNumbers(websiteContent, fileContent, [], null).left}
+                            ${alignMatchingWords(websiteContent, fileContent, []).left}
                         </div>
                     </div>
                     
                     <div class="diff-right">
                         <div class="diff-text-content" id="diffFileContent">
-                            ${generateContentWithInlineLineNumbers(websiteContent, fileContent, [], null).right}
+                            ${alignMatchingWords(websiteContent, fileContent, []).right}
                         </div>
                     </div>
                 </div>
@@ -309,16 +309,38 @@ function displayDifferences(data) {
                 </div>
             </div>
             
+            <!-- Enhanced Word Alignment Legend -->
+            <div class="word-legend">
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color matched-word">✓ Word</span>
+                        <span class="legend-text">Single words that match exactly</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color word-highlight-removed">❌ Removed</span>
+                        <span class="legend-text">Words only in website content</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color word-highlight-added">➕ Added</span>
+                        <span class="legend-text">Words only in text file</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color empty-word">Empty</span>
+                        <span class="legend-text">No matching content</span>
+                    </div>
+                </div>
+            </div>
+            
             <div class="diff-content-wrapper">
                 <div class="diff-left">
                     <div class="diff-text-content" id="diffWebsiteContent">
-                        ${generateContentWithInlineLineNumbers(websiteContent, fileContent, data.simple_diffs, data).left}
+                        ${alignMatchingWords(websiteContent, fileContent, data.simple_diffs).left}
                     </div>
                 </div>
                 
                 <div class="diff-right">
                     <div class="diff-text-content" id="diffFileContent">
-                        ${generateContentWithInlineLineNumbers(websiteContent, fileContent, data.simple_diffs, data).right}
+                        ${alignMatchingWords(websiteContent, fileContent, data.simple_diffs).right}
                     </div>
                 </div>
             </div>
@@ -753,6 +775,212 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Function to align matching words side by side - Enhanced for line-by-line alignment
+function alignMatchingWords(content1, content2, differences) {
+    const lines1 = content1.split('\n');
+    const lines2 = content2.split('\n');
+    
+    let alignedResult1 = '';
+    let alignedResult2 = '';
+    
+    // Create maps for faster lookup of differences
+    const removedDiffs = new Map();
+    const addedDiffs = new Map();
+    
+    if (differences && Array.isArray(differences)) {
+        differences.forEach(diff => {
+            if (diff.type === 'removed' && diff.website) {
+                const key = diff.website.toLowerCase().trim();
+                removedDiffs.set(key, diff.website);
+            } else if (diff.type === 'added' && diff.file) {
+                const key = diff.file.toLowerCase().trim();
+                addedDiffs.set(key, diff.file);
+            }
+        });
+    }
+    
+    // Find all matching phrases and words first (used for global highlighting)
+    const matchingData = findMatchingPhrases(lines1, lines2);
+    
+    // Process each line with enhanced alignment
+    const maxLines = Math.max(lines1.length, lines2.length);
+    
+    for (let i = 0; i < maxLines; i++) {
+        const line1 = lines1[i] || '';
+        const line2 = lines2[i] || '';
+        
+        // Check for exact line matches first
+        if (line1.trim() && line2.trim() && line1.toLowerCase().trim() === line2.toLowerCase().trim()) {
+            // Exact line match - highlight the entire line
+            alignedResult1 += `<div class="exact-match-line">${escapeHtml(line1)}</div>`;
+            alignedResult2 += `<div class="exact-match-line">${escapeHtml(line2)}</div>`;
+        } else if (line1.trim() && line2.trim()) {
+            // Partial match - align words within lines
+            const aligned = alignWordsInLines(line1, line2, removedDiffs, addedDiffs, matchingData);
+            alignedResult1 += `<div class="aligned-line">${aligned.left}</div>`;
+            alignedResult2 += `<div class="aligned-line">${aligned.right}</div>`;
+        } else {
+            // Handle lines that don't have matches
+            const lineClass1 = line1.trim() ? 'website-line diff-highlight-removed' : 'website-line empty-line';
+            const lineClass2 = line2.trim() ? 'website-line diff-highlight-added' : 'website-line empty-line';
+            
+            alignedResult1 += `<div class="${lineClass1}">${escapeHtml(line1)}</div>`;
+            alignedResult2 += `<div class="${lineClass2}">${escapeHtml(line2)}</div>`;
+        }
+    }
+    
+    return { left: alignedResult1, right: alignedResult2 };
+}
+
+// Function to find matching phrases between two sets of lines - Improved
+function findMatchingPhrases(lines1, lines2) {
+    const matchingPhrases = new Set();
+    const matchingWords = new Set();
+    
+    // Find common words and phrases
+    lines1.forEach(line1 => {
+        if (!line1.trim()) return;
+        
+        const words1 = line1.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+        
+        lines2.forEach(line2 => {
+            if (!line2.trim()) return;
+            
+            const words2 = line2.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+            
+            // Find matching single words first
+            words1.forEach(word1 => {
+                if (words2.includes(word1)) {
+                    matchingWords.add(word1);
+                }
+            });
+            
+            // Find matching phrases of 2 or more words
+            for (let i = 0; i < words1.length - 1; i++) {
+                for (let j = 0; j < words2.length - 1; j++) {
+                    // Check for 2-word phrases
+                    if (words1[i] === words2[j] && words1[i + 1] === words2[j + 1]) {
+                        const phrase = `${words1[i]} ${words1[i + 1]}`;
+                        matchingPhrases.add(phrase);
+                        
+                        // Check for longer phrases (up to 4 words)
+                        let k = 2;
+                        while (i + k < words1.length && j + k < words2.length && 
+                               k < 4 && words1[i + k] === words2[j + k]) {
+                            const longerPhrase = words1.slice(i, i + k + 1).join(' ');
+                            matchingPhrases.add(longerPhrase);
+                            k++;
+                        }
+                    }
+                }
+            }
+        });
+    });
+    
+    return { phrases: matchingPhrases, words: matchingWords };
+}
+
+// Function to align words within two lines - Enhanced with better matching
+function alignWordsInLines(line1, line2, removedDiffs, addedDiffs, matchingData = { phrases: new Set(), words: new Set() }) {
+    const words1 = line1.split(/\s+/).filter(w => w.trim());
+    const words2 = line2.split(/\s+/).filter(w => w.trim());
+    
+    let alignedWords1 = [];
+    let alignedWords2 = [];
+    
+    // Find matching words and phrases, align them
+    let i = 0, j = 0;
+    
+    while (i < words1.length || j < words2.length) {
+        const word1 = words1[i] || '';
+        const word2 = words2[j] || '';
+        
+        // Check for phrase matches first (2+ words)
+        let phraseMatch = null;
+        let phraseLength = 0;
+        
+        if (word1 && word2) {
+            // Check for matching phrases starting from current position
+            for (let len = Math.min(words1.length - i, words2.length - j, 4); len >= 2; len--) {
+                const phrase1 = words1.slice(i, i + len).join(' ').toLowerCase();
+                const phrase2 = words2.slice(j, j + len).join(' ').toLowerCase();
+                
+                if (phrase1 === phrase2 && matchingData.phrases.has(phrase1)) {
+                    phraseMatch = phrase1;
+                    phraseLength = len;
+                    break;
+                }
+            }
+        }
+        
+        if (phraseMatch) {
+            // Phrase match found - highlight the entire phrase
+            const phrase1 = words1.slice(i, i + phraseLength).join(' ');
+            const phrase2 = words2.slice(j, j + phraseLength).join(' ');
+            
+            alignedWords1.push(`<span class="matched-phrase" title="✅ Phrase Match: ${phraseMatch}">${escapeHtml(phrase1)}</span>`);
+            alignedWords2.push(`<span class="matched-phrase" title="✅ Phrase Match: ${phraseMatch}">${escapeHtml(phrase2)}</span>`);
+            
+            i += phraseLength;
+            j += phraseLength;
+        } else if (word1.toLowerCase() === word2.toLowerCase() && word1 && word2) {
+            // Single word match
+            alignedWords1.push(`<span class="matched-word" title="✅ Word Match">${escapeHtml(word1)}</span>`);
+            alignedWords2.push(`<span class="matched-word" title="✅ Word Match">${escapeHtml(word2)}</span>`);
+            i++;
+            j++;
+        } else {
+            // Words don't match - check which one to add
+            if (i < words1.length && (!word2 || word1.toLowerCase() < word2.toLowerCase())) {
+                // Add word from line1
+                const isGlobalMatch1 = matchingData.words && matchingData.words.has(word1.toLowerCase());
+                const isRemoved = isWordInDifferences(word1, removedDiffs);
+                const wordClass = isGlobalMatch1 ? 'matched-word' : (isRemoved ? 'word-highlight-removed' : 'word-normal');
+                const title = isGlobalMatch1 ? '✅ Word Match' : (isRemoved ? '❌ Removed from file' : '📝 Only in website');
+                alignedWords1.push(`<span class="${wordClass}" title="${title}">${escapeHtml(word1)}</span>`);
+                alignedWords2.push(`<span class="empty-word" title="No match"></span>`);
+                i++;
+            } else if (j < words2.length) {
+                // Add word from line2
+                const isGlobalMatch2 = matchingData.words && matchingData.words.has(word2.toLowerCase());
+                const isAdded = isWordInDifferences(word2, addedDiffs);
+                const wordClass = isGlobalMatch2 ? 'matched-word' : (isAdded ? 'word-highlight-added' : 'word-normal');
+                const title = isGlobalMatch2 ? '✅ Word Match' : (isAdded ? '➕ Added to file' : '📄 Only in file');
+                alignedWords1.push(`<span class="empty-word" title="No match"></span>`);
+                alignedWords2.push(`<span class="${wordClass}" title="${title}">${escapeHtml(word2)}</span>`);
+                j++;
+            } else {
+                break;
+            }
+        }
+    }
+    
+    // Join without extra spaces to avoid hidden gaps between inline spans
+    return {
+        left: alignedWords1.join(''),
+        right: alignedWords2.join('')
+    };
+}
+
+// Helper function to check if a word is in differences
+function isWordInDifferences(word, diffMap) {
+    const wordLower = word.toLowerCase().trim();
+    
+    // Check exact match
+    if (diffMap.has(wordLower)) {
+        return true;
+    }
+    
+    // Check if word is part of any difference
+    for (const [key, value] of diffMap) {
+        if (value.toLowerCase().includes(wordLower) || wordLower.includes(key)) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 

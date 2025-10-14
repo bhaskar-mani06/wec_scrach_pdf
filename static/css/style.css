@@ -1376,19 +1376,16 @@ body::after {
     background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
     color: #c62828 !important;
     font-weight: 600 !important;
-    padding: 2px 4px !important;
-    border-radius: 3px !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
     border: 1px solid rgba(244, 67, 54, 0.3) !important;
     box-shadow: 
-        0 1px 3px rgba(244, 67, 54, 0.2),
+        0 2px 4px rgba(244, 67, 54, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
     transition: all 0.2s ease !important;
-    display: inline !important;
-    margin: 0 1px !important;
-    text-decoration: underline;
-    text-decoration-color: rgba(244, 67, 54, 0.5);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2px;
+    display: inline-block !important;
+    margin: 0 2px !important;
+    font-size: 0.95rem !important;
 }
 
 .word-highlight-removed:hover {
@@ -1403,19 +1400,16 @@ body::after {
     background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%) !important;
     color: #2e7d32 !important;
     font-weight: 600 !important;
-    padding: 2px 4px !important;
-    border-radius: 3px !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
     border: 1px solid rgba(76, 175, 80, 0.3) !important;
     box-shadow: 
-        0 1px 3px rgba(76, 175, 80, 0.2),
+        0 2px 4px rgba(76, 175, 80, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
     transition: all 0.2s ease !important;
-    display: inline !important;
-    margin: 0 1px !important;
-    text-decoration: underline;
-    text-decoration-color: rgba(76, 175, 80, 0.5);
-    text-decoration-thickness: 2px;
-    text-underline-offset: 2px;
+    display: inline-block !important;
+    margin: 0 2px !important;
+    font-size: 0.95rem !important;
 }
 
 .word-highlight-added:hover {
@@ -1445,6 +1439,320 @@ body::after {
 
 .diff-text-content::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #5a67d8, #6b46c1);
+}
+
+/* Word Alignment Styles - Clean and Professional */
+.aligned-line {
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin: 4px 0;
+    transition: all 0.3s ease;
+    word-wrap: break-word;
+    white-space: normal;
+    color: #2d3748;
+    font-weight: 400;
+    line-height: 1.6;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    position: relative;
+    background: rgba(255, 255, 255, 0.4);
+    border-bottom: 1px dotted rgba(0, 0, 0, 0.06);
+}
+
+.aligned-line:hover {
+    background: rgba(102, 126, 234, 0.05);
+    border-color: rgba(102, 126, 234, 0.15);
+    transform: translateX(1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Exact line matches - Perfect alignment */
+.exact-match-line {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%) !important;
+    color: #2e7d32 !important;
+    font-weight: 600 !important;
+    padding: 12px 16px !important;
+    border-radius: 8px !important;
+    border: 2px solid #4caf50 !important;
+    box-shadow: 
+        0 3px 10px rgba(76, 175, 80, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    transition: all 0.3s ease !important;
+    margin: 4px 0 !important;
+    position: relative !important;
+    cursor: help !important;
+    line-height: 1.6 !important;
+}
+
+.exact-match-line::before {
+    content: '🎯' !important;
+    position: absolute !important;
+    top: -10px !important;
+    right: -10px !important;
+    background: #4caf50 !important;
+    color: white !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    box-shadow: 0 3px 6px rgba(76, 175, 80, 0.4) !important;
+}
+
+.exact-match-line:hover {
+    background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%) !important;
+    box-shadow: 
+        0 5px 15px rgba(76, 175, 80, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    transform: translateX(3px) !important;
+    border-color: #2e7d32 !important;
+}
+
+/* Matching phrases - Multi-word matches */
+.matched-phrase {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+    color: #1565c0 !important;
+    font-weight: 700 !important;
+    padding: 6px 12px !important;
+    border-radius: 8px !important;
+    border: 2px solid #2196f3 !important;
+    box-shadow: 
+        0 3px 10px rgba(33, 150, 243, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
+    margin: 0 3px !important;
+    position: relative !important;
+    cursor: help !important;
+}
+
+.matched-phrase::before {
+    content: '🔗' !important;
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    background: #2196f3 !important;
+    color: white !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.4) !important;
+}
+
+.matched-phrase:hover {
+    background: linear-gradient(135deg, #bbdefb 0%, #e3f2fd 100%) !important;
+    box-shadow: 
+        0 4px 12px rgba(33, 150, 243, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    transform: scale(1.05) !important;
+    border-color: #1565c0 !important;
+}
+
+/* Matching words - Single word matches */
+.matched-word {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%) !important;
+    color: #2e7d32 !important;
+    font-weight: 600 !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    border: 1px solid #4caf50 !important;
+    box-shadow: 
+        0 2px 6px rgba(76, 175, 80, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
+    margin: 0 2px !important;
+    position: relative !important;
+    cursor: help !important;
+    font-size: 0.95rem !important;
+}
+
+.matched-word::before {
+    content: '✓' !important;
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    background: #4caf50 !important;
+    color: white !important;
+    width: 16px !important;
+    height: 16px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.4) !important;
+}
+
+.matched-word:hover {
+    background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%) !important;
+    box-shadow: 
+        0 4px 12px rgba(76, 175, 80, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    transform: scale(1.05) !important;
+    border-color: #2e7d32 !important;
+}
+
+/* Empty lines styling */
+.empty-line {
+    color: #adb5bd !important;
+    font-style: italic !important;
+    padding: 8px 12px !important;
+    background: rgba(173, 181, 189, 0.05) !important;
+    border: 1px dashed rgba(173, 181, 189, 0.3) !important;
+    border-radius: 6px !important;
+    margin: 4px 0 !important;
+}
+
+/* Normal words - subtle styling */
+.word-normal {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #495057 !important;
+    font-weight: 500 !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.2s ease !important;
+    display: inline-block !important;
+    margin: 0 1px !important;
+    cursor: help !important;
+    font-size: 0.95rem !important;
+}
+
+.word-normal:hover {
+    background: rgba(102, 126, 234, 0.08) !important;
+    border-color: rgba(102, 126, 234, 0.2) !important;
+    transform: scale(1.01) !important;
+}
+
+/* Empty words - clean placeholder */
+.empty-word {
+    color: transparent !important;
+    background: transparent !important;
+    padding: 0 4px !important;
+    margin: 0 1px !important;
+    display: inline-block !important;
+    min-width: 4px !important;
+    text-align: center !important;
+    border-radius: 4px !important;
+    border: none !important;
+    font-style: normal !important;
+    cursor: help !important;
+    transition: all 0.2s ease !important;
+    position: relative !important;
+}
+
+.empty-word::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 2px !important;
+    height: 2px !important;
+    background: rgba(173, 181, 189, 0.3) !important;
+    border-radius: 50% !important;
+}
+
+.empty-word:hover {
+    background: rgba(173, 181, 189, 0.05) !important;
+    border: 1px dashed rgba(173, 181, 189, 0.2) !important;
+}
+
+.empty-word:hover::before {
+    background: rgba(173, 181, 189, 0.5) !important;
+    width: 4px !important;
+    height: 4px !important;
+}
+
+/* Word Alignment Legend Styles */
+.word-legend {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #e2e8f0;
+    padding: 12px 20px;
+    margin: 0;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.legend-title {
+    font-weight: 700;
+    color: #2d3748;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.legend-color {
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+    min-width: 60px !important;
+    text-align: center !important;
+    display: inline-block !important;
+}
+
+.legend-text {
+    color: #6c757d;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+/* Mobile responsive legend */
+@media (max-width: 768px) {
+    .word-legend {
+        padding: 12px 15px;
+    }
+    
+    .legend-items {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .legend-item {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .legend-color {
+        min-width: 50px !important;
+        font-size: 0.75rem !important;
+    }
+    
+    .legend-text {
+        font-size: 0.75rem;
+    }
 }
 
 /* Custom scrollbar */
